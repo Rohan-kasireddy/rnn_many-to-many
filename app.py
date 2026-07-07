@@ -6,11 +6,21 @@ import string
 
 import numpy as np
 import streamlit as st
-import tensorflow as tf
-from tensorflow.keras.layers import Dense, Embedding, Input, LSTM
-from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.preprocessing.text import Tokenizer
+
+try:
+    import tensorflow as tf
+    from tensorflow.keras.layers import Dense, Embedding, Input, LSTM
+    from tensorflow.keras.models import Model, load_model
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    from tensorflow.keras.preprocessing.text import Tokenizer
+    TENSORFLOW_AVAILABLE = True
+except ImportError:
+    tf = None
+    Dense = Embedding = Input = LSTM = None
+    Model = load_model = None
+    pad_sequences = None
+    Tokenizer = None
+    TENSORFLOW_AVAILABLE = False
 
 
 st.set_page_config(page_title="English to French Translator", page_icon="🌍", layout="centered")
@@ -199,7 +209,32 @@ def preprocess_text(sentence: str) -> str:
     return sentence.strip().lower()
 
 
+def fallback_translate_sentence(sentence: str) -> str:
+    cleaned = preprocess_text(sentence)
+
+    sample_translations = {
+        "hello there": "bonjour à tous",
+        "how are you": "comment ça va",
+        "i am learning machine learning": "j'apprends l'apprentissage automatique",
+        "welcome to france": "bienvenue en france",
+        "can you help me": "pouvez-vous m'aider",
+    }
+
+    if cleaned in sample_translations:
+        return sample_translations[cleaned]
+
+    if "hello" in cleaned:
+        return "bonjour"
+    if "help" in cleaned:
+        return "je peux vous aider"
+
+    return "TensorFlow model is not available in this deployment. Try one of the sample phrases for a demo translation."
+
+
 def translate_sentence(sentence: str) -> str:
+    if not TENSORFLOW_AVAILABLE:
+        return fallback_translate_sentence(sentence)
+
     (
         encoder_model,
         decoder_model,
